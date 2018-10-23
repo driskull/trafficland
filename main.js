@@ -6,7 +6,7 @@ require([
   "esri/views/MapView",
   "esri/geometry/support/webMercatorUtils"
 ], function(esriConfig, Graphic, Map, esriRequest, MapView, webMercatorUtils) {
-  esriConfig.request.proxyUrl = "/proxy/proxy.php";
+  //esriConfig.request.proxyUrl = "/proxy/proxy.php";
 
 
   var map = new Map({
