@@ -6,7 +6,7 @@ require([
   "esri/views/MapView",
   "esri/geometry/support/webMercatorUtils"
 ], function(esriConfig, Graphic, Map, esriRequest, MapView, webMercatorUtils) {
-  //esriConfig.request.proxyUrl = "/proxy/proxy.php";
+  esriConfig.request.proxyUrl = "/proxy/proxy.php";
 
 
   var map = new Map({
@@ -35,7 +35,7 @@ require([
             swlat: geographic.ymin,
             swlon: geographic.xmin
           },
-          //useProxy: true
+          useProxy: true
         };
 
         var request = esriRequest(
@@ -86,7 +86,6 @@ require([
               symbol: symbol
             });
             view.graphics.add(graphic);
-            
             addedMap[result.publicId] = true;
           });
         });
