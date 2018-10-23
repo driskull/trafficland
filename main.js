@@ -15,17 +15,14 @@ require([
 
   var view = new MapView({
     map: map,
-    zoom: 12,
-    center: [-117, 34],
+    zoom: 16,
+    center: [-122.3321, 47.6062],
     container: "viewDiv"
   });
 
   view.when(function() {
-    var timer;
-    view.watch("extent", function() {
-      timer && clearTimeout(timer);
-      timer = setTimeout(function() {
-        view.graphics.removeAll();
+
+    function fetchData(){
 
         var geographic = webMercatorUtils.webMercatorToGeographic(view.extent);
 
@@ -38,7 +35,7 @@ require([
             swlat: geographic.ymin,
             swlon: geographic.xmin
           },
-          useProxy: true
+          //useProxy: true
         };
 
         var request = esriRequest(
@@ -46,10 +43,17 @@ require([
           options
         );
 
+        var addedMap = {};
+
         request.then(function(response) {
           var data = response.data;
 
           data.forEach(result => {
+
+            if (addedMap[result.publicId]){
+              return;
+            }
+
             var point = {
               type: "point",
               latitude: result.location.latitude,
@@ -82,9 +86,20 @@ require([
               symbol: symbol
             });
             view.graphics.add(graphic);
+            
+            addedMap[result.publicId] = true;
           });
         });
-      }, 2000);
+    }
+
+    fetchData();
+
+    var timer;
+    view.watch("extent", function() {
+      timer && clearTimeout(timer);
+      timer = setTimeout(function() {
+        fetchData();
+      }, 1000);
     });
   });
 });
