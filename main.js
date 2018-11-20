@@ -4,10 +4,15 @@ require([
   "esri/Map",
   "esri/request",
   "esri/views/MapView",
-  "esri/geometry/support/webMercatorUtils"
-], function(esriConfig, Graphic, Map, esriRequest, MapView, webMercatorUtils) {
+  "esri/geometry/support/webMercatorUtils",
+  "esri/core/urlUtils"
+], function(esriConfig, Graphic, Map, esriRequest, MapView, webMercatorUtils, urlUtils) {
   esriConfig.request.proxyUrl = "/proxy/proxy.php";
 
+  urlUtils.addProxyRule({
+    urlPrefix: "api.trafficland.com",
+    proxyUrl: esriConfig.request.proxyUrl
+  });
 
   var map = new Map({
     basemap: "topo"
@@ -15,8 +20,8 @@ require([
 
   var view = new MapView({
     map: map,
-    zoom: 16,
-    center: [-122.3321, 47.6062],
+    zoom: 14,
+    center: [-77.0369, 38.9072],
     container: "viewDiv"
   });
 
@@ -34,8 +39,7 @@ require([
             nelon: geographic.xmax,
             swlat: geographic.ymin,
             swlon: geographic.xmin
-          },
-          useProxy: true
+          }
         };
 
         var request = esriRequest(
@@ -73,10 +77,12 @@ require([
             };
 
             var symbol = {
-              type: "picture-marker",
-              url: "pin.png",
-              width: "32px",
-              height: "32px"
+              type: "simple-marker",
+              outline: {
+                  style: "none"
+              },
+              size: 10,
+              color: [26, 26, 26, 1]
             };
 
             var graphic = new Graphic({
