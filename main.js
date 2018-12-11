@@ -6,11 +6,16 @@ require([
   "esri/views/MapView",
   "esri/geometry/support/webMercatorUtils",
   "esri/core/urlUtils"
-], function(esriConfig, Graphic, Map, esriRequest, MapView, webMercatorUtils, urlUtils) {
+], function (esriConfig, Graphic, Map, esriRequest, MapView, webMercatorUtils, urlUtils) {
   esriConfig.request.proxyUrl = "/proxy/proxy.php";
 
   urlUtils.addProxyRule({
     urlPrefix: "api.trafficland.com",
+    proxyUrl: esriConfig.request.proxyUrl
+  });
+
+  urlUtils.addProxyRule({
+    urlPrefix: "ie.trafficland.com",
     proxyUrl: esriConfig.request.proxyUrl
   });
 
@@ -25,84 +30,104 @@ require([
     container: "viewDiv"
   });
 
-  view.when(function() {
+  view.when(function () {
 
-    function fetchData(){
+    var addedMap = {};
 
-        var geographic = webMercatorUtils.webMercatorToGeographic(view.extent);
+    function fetchData() {
 
-        var options = {
-          query: {
-            system: "bentear",
-            key: "a1441baa6d570d1f68c064211bce5492",
-            nelat: geographic.ymax,
-            nelon: geographic.xmax,
-            swlat: geographic.ymin,
-            swlon: geographic.xmin
+      // https://trafficlandapi.docs.apiary.io/#
+      // http://api.trafficland.com/v2.0/json/video_feeds?system=bentear&key=KEY_HERE
+      // could not get weather to return data. Either no camera has data or account doesn't allow it.
+      // camera orientation is just "north", "south", "east", "west". so not much detail in the direction it is pointing.
+
+      var geographic = webMercatorUtils.webMercatorToGeographic(view.extent);
+
+      var options = {
+        query: {
+          system: "bentear",
+          key: "a1441baa6d570d1f68c064211bce5492",
+          nelat: geographic.ymax,
+          nelon: geographic.xmax,
+          swlat: geographic.ymin,
+          swlon: geographic.xmin,
+          includeWeather: true
+        }
+      };
+
+      var request = esriRequest(
+        "https://api.trafficland.com/v2.1/json/video_feeds/bbox",
+        options
+      );
+
+      request.then(function (response) {
+        var data = response.data;
+
+        console.log(response);
+
+        data.forEach(result => {
+
+          if (addedMap[result.publicId]) {
+            return;
           }
-        };
 
-        var request = esriRequest(
-          "https://api.trafficland.com/v2.1/json/video_feeds/bbox",
-          options
-        );
+          var point = {
+            type: "point",
+            latitude: result.location.latitude,
+            longitude: result.location.longitude
+          };
 
-        var addedMap = {};
+          var date = new Date(result.updatedAt || result.createdAt);
 
-        request.then(function(response) {
-          var data = response.data;
+          var content = "";
+          content += '<h2>' + result.providerFullName + '</h2>';
+          content += '<p><a href="' + result.content.hugeJpeg + '" target="_blank"><img src="' + result.content.halfJpeg + '" /></a></p>';
+          content += '<p>Updated ' + date.toLocaleDateString() + ' at ' + date.toLocaleTimeString() + '</p>';
+          if (result.description) {
+            content += '<p>' + result.description + '</p>'
+          }
 
-          data.forEach(result => {
+          var popupTemplate = {
+            title: result.name,
+            content: content
+          };
 
-            if (addedMap[result.publicId]){
-              return;
-            }
+          var symbol = {
+            type: "simple-marker",
+            outline: {
+              style: "none"
+            },
+            size: 10,
+            color: [26, 26, 26, 1]
+          };
 
-            var point = {
-              type: "point",
-              latitude: result.location.latitude,
-              longitude: result.location.longitude
-            };
+          var marker = {
+            type: "picture-marker",
+            url: result.content.halfJpeg,
+            width: "44px",
+            height: "30px"
+          };
 
-            var popupTemplate = {
-              title: result.name,
-              content:
-                "<h2>" +
-                result.providerFullName +
-                '</h2><p><a href="' +
-                result.content.hugeJpeg +
-                '" target="_blank"><img src="' +
-                result.content.halfJpeg +
-                '" /></a></p>'
-            };
-
-            var symbol = {
-              type: "simple-marker",
-              outline: {
-                  style: "none"
-              },
-              size: 10,
-              color: [26, 26, 26, 1]
-            };
-
-            var graphic = new Graphic({
-              geometry: point,
-              attributes: result.location,
-              popupTemplate: popupTemplate,
-              symbol: symbol
-            });
-            view.graphics.add(graphic);
-            addedMap[result.publicId] = true;
+          var graphic = new Graphic({
+            geometry: point,
+            attributes: result,
+            popupTemplate: popupTemplate,
+            symbol: symbol
           });
+
+          view.graphics.add(graphic);
+
+          addedMap[result.publicId] = true;
         });
+      });
     }
 
     fetchData();
 
     var timer;
-    view.watch("extent", function() {
+    view.watch("extent", function () {
       timer && clearTimeout(timer);
-      timer = setTimeout(function() {
+      timer = setTimeout(function () {
         fetchData();
       }, 1000);
     });
